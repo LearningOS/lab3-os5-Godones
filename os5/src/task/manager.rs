@@ -10,6 +10,7 @@ use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use lazy_static::*;
+use crate::config::BIG_STRIDE;
 use crate::task::TaskStatus;
 
 pub struct TaskManager {
@@ -35,15 +36,16 @@ impl TaskManager {
     }
     // stride 调度算法
     pub fn stride(&mut self) -> Option<Arc<TaskControlBlock>> {
-        let max_pass = usize::MAX;
-        let mut m_index = 0;
-        let _ = self.ready_queue.iter().enumerate().map(|(index, task)| {
-            let inner = task.inner_exclusive_access();
-            if inner.pass < max_pass {
-                m_index = index;
-            }
-        });
-        Some(self.ready_queue.remove(m_index))
+       if let Some((index,task)) = self.ready_queue.iter().enumerate().min_by_key(|(_,task)|{
+           task.inner_exclusive_access().pass
+       }){
+           let mut inner = task.inner_exclusive_access();
+           inner.pass +=inner.stride;
+           drop(inner);
+           Some(self.ready_queue.remove(index))
+       }else {
+           None
+       }
     }
 }
 

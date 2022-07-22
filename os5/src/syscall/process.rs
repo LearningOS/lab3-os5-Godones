@@ -5,7 +5,7 @@ use crate::mm::{MapPermission, PageTable, translated_refmut, translated_str, Vir
 use crate::task::{add_task, current_add_area, current_delete_page, current_task, current_user_token, exit_current_and_run_next, get_current_task_first_run_time, get_current_task_syscall, suspend_current_and_run_next, TaskStatus};
 use crate::timer::get_time_us;
 use alloc::sync::Arc;
-use crate::config::MAX_SYSCALL_NUM;
+use crate::config::{BIG_STRIDE, MAX_SYSCALL_NUM};
 
 #[repr(C)]
 #[derive(Debug)]
@@ -199,6 +199,6 @@ pub fn sys_set_priority(prio: isize) -> isize {
         return -1;
     }
     let task = current_task().unwrap();
-    task.inner_exclusive_access().priority = prio as usize;
+    task.inner_exclusive_access().stride = BIG_STRIDE/prio as usize;
     prio
 }

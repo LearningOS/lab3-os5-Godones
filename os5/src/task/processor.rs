@@ -65,7 +65,6 @@ pub fn run_tasks() {
                 let time = get_time_us()/1000;
                 task_inner.update_first_run_time(time);
             }
-            task_inner.pass +=BIG_STRIDE/task_inner.priority;
 
             drop(task_inner);
             // release coming task TCB manually

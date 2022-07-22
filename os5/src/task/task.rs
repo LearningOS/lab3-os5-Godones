@@ -2,7 +2,7 @@
 
 use super::TaskContext;
 use super::{pid_alloc, KernelStack, PidHandle};
-use crate::config::{MAX_SYSCALL_NUM, TRAP_CONTEXT};
+use crate::config::{BIG_STRIDE, MAX_SYSCALL_NUM, TRAP_CONTEXT};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE, MapPermission};
 use crate::sync::UPSafeCell;
 use crate::trap::{trap_handler, TrapContext};
@@ -54,7 +54,7 @@ pub struct TaskControlBlockInner {
     pub syscall_times:[u32; MAX_SYSCALL_NUM],
     /// the
     pub pass:usize,
-    pub priority:usize,
+    pub stride:usize,
 }
 
 /// Simple access to its internal fields
@@ -137,7 +137,7 @@ impl TaskControlBlock {
                     first_run_time: 0,
                     syscall_times: [0; MAX_SYSCALL_NUM],
                     pass: 0,
-                    priority: 16
+                    stride: BIG_STRIDE/16,
                 })
             },
         };
@@ -208,7 +208,7 @@ impl TaskControlBlock {
                     first_run_time: 0,
                     syscall_times: [0;MAX_SYSCALL_NUM],
                     pass: 0,
-                    priority: 16
+                    stride: BIG_STRIDE/16
                 })
             },
         });
