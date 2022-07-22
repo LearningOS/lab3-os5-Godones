@@ -2,13 +2,15 @@
 
 use super::TaskContext;
 use super::{pid_alloc, KernelStack, PidHandle};
-use crate::config::{MAX_SYSCALL_NUM, TRAP_CONTEXT};
+use crate::config::{BIG_STRIDE, MAX_SYSCALL_NUM, TRAP_CONTEXT};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE, MapPermission};
 use crate::sync::UPSafeCell;
 use crate::trap::{trap_handler, TrapContext};
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
 use core::cell::RefMut;
+use crate::loader::get_app_data_by_name;
+use crate::task::add_task;
 
 /// Task control block structure
 ///
@@ -50,6 +52,9 @@ pub struct TaskControlBlockInner {
     pub first_run_time: usize,
     /// the times of syscall
     pub syscall_times:[u32; MAX_SYSCALL_NUM],
+    /// the
+    pub pass:usize,
+    pub stride:usize,
 }
 
 /// Simple access to its internal fields
@@ -131,6 +136,8 @@ impl TaskControlBlock {
                     exit_code: 0,
                     first_run_time: 0,
                     syscall_times: [0; MAX_SYSCALL_NUM],
+                    pass: 0,
+                    stride: BIG_STRIDE/16,
                 })
             },
         };
@@ -199,7 +206,9 @@ impl TaskControlBlock {
                     children: Vec::new(),
                     exit_code: 0,
                     first_run_time: 0,
-                    syscall_times: [0;MAX_SYSCALL_NUM]
+                    syscall_times: [0;MAX_SYSCALL_NUM],
+                    pass: 0,
+                    stride: BIG_STRIDE/16
                 })
             },
         });
@@ -214,6 +223,24 @@ impl TaskControlBlock {
         // ---- release parent PCB automatically
         // **** release children PCB automatically
     }
+    pub fn spawn(self:&Arc<TaskControlBlock>,path:&str)->isize{
+        //直接创建一个新的子进程，并且执行程序
+        let data = get_app_data_by_name(path);
+        if let Some(data) = data{
+            let task_control_block = Arc::new(TaskControlBlock::new(data));
+            //修改其父进程的引用
+            let mut inner = task_control_block.inner_exclusive_access();
+            inner.parent = Some(Arc::downgrade(self));
+            self.inner_exclusive_access().children.push(task_control_block.clone());
+            drop(inner);
+            let pid =  task_control_block.getpid() as isize;
+            debug!("spawn {}",pid);
+            add_task(task_control_block);
+            pid
+        }else{
+            return -1;
+        }
+    }
     pub fn getpid(&self) -> usize {
         self.pid.0
     }
@@ -222,7 +249,6 @@ impl TaskControlBlock {
 #[derive(Copy, Clone, PartialEq)]
 /// task status: UnInit, Ready, Running, Exited
 pub enum TaskStatus {
-    UnInit,
     Ready,
     Running,
     Zombie,

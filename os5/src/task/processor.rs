@@ -12,7 +12,7 @@ use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 use alloc::sync::Arc;
 use lazy_static::*;
-use crate::config::MAX_SYSCALL_NUM;
+use crate::config::{BIG_STRIDE, MAX_SYSCALL_NUM};
 use crate::mm::{MapPermission, VirtAddr};
 use crate::timer::get_time_us;
 
@@ -65,7 +65,6 @@ pub fn run_tasks() {
                 let time = get_time_us()/1000;
                 task_inner.update_first_run_time(time);
             }
-
 
             drop(task_inner);
             // release coming task TCB manually

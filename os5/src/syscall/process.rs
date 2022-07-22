@@ -5,7 +5,7 @@ use crate::mm::{MapPermission, PageTable, translated_refmut, translated_str, Vir
 use crate::task::{add_task, current_add_area, current_delete_page, current_task, current_user_token, exit_current_and_run_next, get_current_task_first_run_time, get_current_task_syscall, suspend_current_and_run_next, TaskStatus};
 use crate::timer::get_time_us;
 use alloc::sync::Arc;
-use crate::config::MAX_SYSCALL_NUM;
+use crate::config::{BIG_STRIDE, MAX_SYSCALL_NUM};
 
 #[repr(C)]
 #[derive(Debug)]
@@ -183,11 +183,22 @@ pub fn sys_munmap(start: usize, len: usize) -> isize {
 
 //
 // YOUR JOB: 实现 sys_spawn 系统调用
-// ALERT: 注意在实现 SPAWN 时不需要复制父进程地址空间，SPAWN != FORK + EXEC 
-pub fn sys_spawn(_path: *const u8) -> isize {
-    -1
+// ALERT: 注意在实现 SPAWN 时不需要复制父进程地址空间，SPAWN != FORK + EXEC
+pub fn sys_spawn(path:*const u8)->isize{
+    //完成新建子进程并执行应用程序的功能，即将exec与fork合并的功能
+    //这里的实现是spawn不必像fork一样复制父进程地址空间和内容
+    let token = current_user_token();
+    let name = translated_str(token,path);//查找是否存在此应用程序
+    let task = current_task().unwrap();
+    task.spawn(name.as_str())
 }
+
 // YOUR JOB: 实现sys_set_priority，为任务添加优先级
-pub fn sys_set_priority(_prio: isize) -> isize {
-    -1
+pub fn sys_set_priority(prio: isize) -> isize {
+    if prio<=1 {
+        return -1;
+    }
+    let task = current_task().unwrap();
+    task.inner_exclusive_access().stride = BIG_STRIDE/prio as usize;
+    prio
 }
